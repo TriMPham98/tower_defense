@@ -39,12 +39,12 @@ class Turret:
         self.col = col
         self.level = 1
         if type_ == "basic":
-            self.damage = 1
-            self.fire_rate = 1.0  # seconds between shots
+            self.damage = 2  # Increased from 1
+            self.fire_rate = 0.5  # Decreased from 1.0
             self.range = "cell"
         elif type_ == "advanced":
-            self.damage = 2
-            self.fire_rate = 1.5
+            self.damage = 3  # Increased from 2
+            self.fire_rate = 1.0  # Decreased from 1.5
             self.range = "row"
         self.last_shot = time.time()
 
@@ -52,6 +52,38 @@ class Turret:
         current_time = time.time()
         if current_time - self.last_shot >= self.fire_rate:
             if self.range == "cell":
+                # Check adjacent cells first
+                for d_row in [-1, 0, 1]:
+                    for d_col in [-1, 0, 1]:
+                        if d_row == 0 and d_col == 0:  # Skip own cell for now
+                            continue
+                        adj_row = self.row + d_row
+                        adj_col = self.col + d_col
+                        if 0 <= adj_row < GRID_ROWS and 0 <= adj_col < GRID_COLS:
+                            adj_rect = pygame.Rect(
+                                GRID_OFFSET_X + adj_col * CELL_SIZE,
+                                GRID_OFFSET_Y + adj_row * CELL_SIZE,
+                                CELL_SIZE,
+                                CELL_SIZE,
+                            )
+                            for enemy in enemies:
+                                enemy_rect = pygame.Rect(
+                                    enemy.x,
+                                    GRID_OFFSET_Y + enemy.row * CELL_SIZE,
+                                    CELL_SIZE // 2,
+                                    CELL_SIZE // 2,
+                                )
+                                if adj_rect.colliderect(enemy_rect):
+                                    enemy.health -= self.damage
+                                    enemy.hit_time = current_time
+                                    self.last_shot = current_time
+                                    turret_pos = (GRID_OFFSET_X + self.col * CELL_SIZE + CELL_SIZE // 2,
+                                                  GRID_OFFSET_Y + self.row * CELL_SIZE + CELL_SIZE // 2)
+                                    enemy_pos = (enemy.x + CELL_SIZE // 4,
+                                                 GRID_OFFSET_Y + enemy.row * CELL_SIZE + CELL_SIZE // 4)
+                                    shots.append((turret_pos, enemy_pos, current_time))
+                                    return
+                # Then check own cell
                 cell_rect = pygame.Rect(
                     GRID_OFFSET_X + self.col * CELL_SIZE,
                     GRID_OFFSET_Y + self.row * CELL_SIZE,
@@ -69,7 +101,6 @@ class Turret:
                         enemy.health -= self.damage
                         enemy.hit_time = current_time
                         self.last_shot = current_time
-                        # Add shot effect from turret center to enemy center
                         turret_pos = (GRID_OFFSET_X + self.col * CELL_SIZE + CELL_SIZE // 2,
                                       GRID_OFFSET_Y + self.row * CELL_SIZE + CELL_SIZE // 2)
                         enemy_pos = (enemy.x + CELL_SIZE // 4,
@@ -82,7 +113,6 @@ class Turret:
                         enemy.health -= self.damage
                         enemy.hit_time = current_time
                         self.last_shot = current_time
-                        # Add shot effect from turret center to enemy center
                         turret_pos = (GRID_OFFSET_X + self.col * CELL_SIZE + CELL_SIZE // 2,
                                       GRID_OFFSET_Y + self.row * CELL_SIZE + CELL_SIZE // 2)
                         enemy_pos = (enemy.x + CELL_SIZE // 4,
@@ -97,7 +127,7 @@ class Turret:
 
 # Enemy class to handle enemy properties and movement
 class Enemy:
-    def __init__(self, row, health=10, speed=1):
+    def __init__(self, row, health=5, speed=1):  # Decreased from 10
         self.row = row
         self.x = WINDOW_WIDTH + CELL_SIZE  # Start off-screen
         self.health = health
@@ -121,11 +151,11 @@ selected_turret_type = None
 wave_timer = 0
 enemies_killed = 0
 base_health = 10
-base_enemy_health = 10
+base_enemy_health = 5  # Decreased from 10
 base_enemy_speed = 1
-health_increment = 2
+health_increment = 1  # Decreased from 2
 speed_increment = 0.1
-shots = []  # New list to store shot effects (start_pos, end_pos, time)
+shots = []  # List to store shot effects (start_pos, end_pos, time)
 
 # Drawing functions
 def draw_grid():
