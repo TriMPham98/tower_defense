@@ -67,15 +67,27 @@ class Turret:
                     )
                     if cell_rect.colliderect(enemy_rect):
                         enemy.health -= self.damage
-                        enemy.hit_time = current_time  # Set hit time for flash effect
+                        enemy.hit_time = current_time
                         self.last_shot = current_time
+                        # Add shot effect from turret center to enemy center
+                        turret_pos = (GRID_OFFSET_X + self.col * CELL_SIZE + CELL_SIZE // 2,
+                                      GRID_OFFSET_Y + self.row * CELL_SIZE + CELL_SIZE // 2)
+                        enemy_pos = (enemy.x + CELL_SIZE // 4,
+                                     GRID_OFFSET_Y + enemy.row * CELL_SIZE + CELL_SIZE // 4)
+                        shots.append((turret_pos, enemy_pos, current_time))
                         return
             elif self.range == "row":
                 for enemy in sorted(enemies, key=lambda e: e.x):
                     if enemy.row == self.row:
                         enemy.health -= self.damage
-                        enemy.hit_time = current_time  # Set hit time for flash effect
+                        enemy.hit_time = current_time
                         self.last_shot = current_time
+                        # Add shot effect from turret center to enemy center
+                        turret_pos = (GRID_OFFSET_X + self.col * CELL_SIZE + CELL_SIZE // 2,
+                                      GRID_OFFSET_Y + self.row * CELL_SIZE + CELL_SIZE // 2)
+                        enemy_pos = (enemy.x + CELL_SIZE // 4,
+                                     GRID_OFFSET_Y + enemy.row * CELL_SIZE + CELL_SIZE // 4)
+                        shots.append((turret_pos, enemy_pos, current_time))
                         return
 
     def upgrade(self):
@@ -102,17 +114,18 @@ class Enemy:
         return self.x <= 0
 
 # Game state variables
-coins = 200  # Starting coins
-turrets = []  # List of placed turrets
-enemies = []  # List of active enemies
-selected_turret_type = None  # Currently selected turret type
-wave_timer = 0  # Timer for spawning enemies
-enemies_killed = 0  # Track enemies killed for difficulty scaling
-base_health = 10  # Base health
-base_enemy_health = 10  # Initial enemy health
-base_enemy_speed = 1  # Initial enemy speed
-health_increment = 2  # Health increase per difficulty step
-speed_increment = 0.1  # Speed increase per difficulty step
+coins = 200
+turrets = []
+enemies = []
+selected_turret_type = None
+wave_timer = 0
+enemies_killed = 0
+base_health = 10
+base_enemy_health = 10
+base_enemy_speed = 1
+health_increment = 2
+speed_increment = 0.1
+shots = []  # New list to store shot effects (start_pos, end_pos, time)
 
 # Drawing functions
 def draw_grid():
@@ -149,7 +162,7 @@ def draw_enemies():
             CELL_SIZE // 2,
             CELL_SIZE // 2,
         )
-        if current_time - enemy.hit_time < 0.1:  # Flash white for 0.1s when hit
+        if current_time - enemy.hit_time < 0.1:
             color = WHITE
         else:
             color = RED
@@ -177,6 +190,16 @@ def draw_ui():
         text = "Select a turret type: 1 for basic, 2 for advanced"
     screen.blit(font.render(text, True, BLACK), (10, WINDOW_HEIGHT - 30))
     screen.blit(font.render("Left click to place, right click to upgrade (100 coins)", True, BLACK), (10, WINDOW_HEIGHT - 60))
+
+def draw_shots():
+    """Draw temporary lines to indicate turret shots."""
+    current_time = time.time()
+    for shot in shots[:]:  # Use a copy to modify list during iteration
+        start, end, shot_time = shot
+        if current_time - shot_time < 0.1:  # Show shot for 0.1 seconds
+            pygame.draw.line(screen, BLACK, start, end, 2)
+        else:
+            shots.remove(shot)
 
 # Main game loop
 def main():
@@ -216,7 +239,7 @@ def main():
 
         # Update game state
         wave_timer += 1
-        if wave_timer >= 100:  # Spawn enemy every 100 frames
+        if wave_timer >= 100:
             row = random.randint(0, GRID_ROWS - 1)
             health = base_enemy_health + (enemies_killed // 10) * health_increment
             speed = base_enemy_speed + (enemies_killed // 10) * speed_increment
@@ -245,6 +268,7 @@ def main():
         draw_grid()
         draw_turrets()
         draw_enemies()
+        draw_shots()  # Render shot effects after enemies
         draw_coins()
         draw_base_health()
         draw_ui()
